@@ -62,11 +62,27 @@ const SO_API = (function () {
         clearTimeout(t);
       }
 
-      if (!res.ok) throw new ApiError('Server merespons kesalahan (' + res.status + ').');
+      if (!res.ok) {
+        // Google Apps Script /exec URLs redirect to script.googleusercontent.com;
+        // a 404/401/403 there means the deployment or authorization is wrong,
+        // not that our code is broken. Give an actionable message.
+        var hint = '';
+        if (res.status === 404 || res.status === 401 || res.status === 403) {
+          hint = ' Web App belum ter-deploy atau belum diotorisasi. Di Apps Script: Deploy → Manage deployments → pastikan ada deployment "Web app" (Execute as: Me, Access: Anyone with the link), lalu tempel URL yang berakhiran /exec.';
+        }
+        throw new ApiError('Server merespons kesalahan (' + res.status + ').' + hint);
+      }
       const text = await res.text();
       let json;
+      // Apps Script may wrap errors in an HTML page when not authorized.
+      if (text && text.trim().charAt(0) !== '{' && text.trim().charAt(0) !== '[') {
+        var authHint = /sign in|authorize|permission|need permission|masuk|otorisasi/i.test(text)
+          ? ' Akses Web App belum diotorisasi. Buka URL /exec langsung di browser, izinkan akses, lalu coba lagi.'
+          : '';
+        throw new ApiError('Respons server tidak valid (bukan JSON).' + authHint);
+      }
       try { json = JSON.parse(text); }
-      catch (e) { throw new ApiError('Respons server tidak valid.'); }
+      catch (e) { throw new ApiError('Respons server tidak valid (JSON rusak).'); }
 
       if (json && json.success === false) {
         throw new ApiError(json.message || 'Operasi gagal.');
@@ -86,6 +102,9 @@ const SO_API = (function () {
   return {
     setApiUrl, getApiUrl, isConfigured,
     ApiError,
+    // Lightweight connectivity + authorization check. Calls getSOStatus.
+    // Resolves to { ok: true, data } or rejects with an ApiError hint.
+    testConnection: () => call('getSOStatus', {}, { method: 'GET' }),
     getProductBySku: (sku) => call('getProductBySku', { sku }, { method: 'GET' }),
     searchProducts: (query) => call('searchProducts', { query }, { method: 'GET' }),
     savePhysicalCount: (data) => call('savePhysicalCount', data, { method: 'POST' }),

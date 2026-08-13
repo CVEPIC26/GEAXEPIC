@@ -358,10 +358,32 @@
   $('saveApiUrlBtn').addEventListener('click', () => {
     const url = $('apiUrlInput').value.trim();
     if (!url) { toast('Masukkan URL Web App.', 'error'); return; }
+    if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(url)) {
+      toast('URL harus berformat: https://script.google.com/macros/s/.../exec', 'error');
+      return;
+    }
     SO_API.setApiUrl(url);
     updateConfigBanner();
     toast('URL disimpan.', 'success');
     loadSOStatus();
+  });
+
+  $('testConnBtn').addEventListener('click', async () => {
+    if (!requireApi()) return;
+    const btn = $('testConnBtn');
+    btn.disabled = true;
+    showLoading('Menguji koneksi ke server...');
+    try {
+      const data = await SO_API.testConnection();
+      hideLoading();
+      toast('✓ Koneksi berhasil. Server merespons.', 'success');
+      loadSOStatus();
+    } catch (err) {
+      hideLoading();
+      toast(err.message || 'Koneksi gagal.', 'error');
+    } finally {
+      btn.disabled = false;
+    }
   });
   $('apiUrlInput').value = SO_API.getApiUrl();
 
