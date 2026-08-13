@@ -44,7 +44,10 @@ const SO_API = (function () {
       try {
         if (usePost) {
           // Apps Script accepts POST JSON; text/plain avoids preflight CORS.
-          res = await fetch(apiUrl, {
+          // Also append action as a query param so the backend always knows
+          // the action even if the request body fails to parse for any reason.
+          var postUrl = withParam(apiUrl, 'action', params.action);
+          res = await fetch(postUrl, {
             method: 'POST',
             redirect: 'follow',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
