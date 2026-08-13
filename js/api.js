@@ -43,10 +43,17 @@ const SO_API = (function () {
       const t = setTimeout(() => ctrl.abort(), timeoutMs);
       try {
         if (usePost) {
-          // Apps Script accepts POST JSON; text/plain avoids preflight CORS.
-          // Also append action as a query param so the backend always knows
-          // the action even if the request body fails to parse for any reason.
-          var postUrl = withParam(apiUrl, 'action', params.action);
+          // Send ALL params as query string AND as JSON body.
+          // The JSON body is the primary payload for the current backend
+          // (parseBody_). The query string is a fallback so that older
+          // deployed backends — which only parse application/json bodies and
+          // would ignore our text/plain body — still receive every field
+          // (action, sku, fisikHitung, ...) via e.parameter. This makes the
+          // client work against any backend version without a CORS preflight.
+          var postUrl = apiUrl;
+          Object.keys(params).forEach((k) => {
+            if (params[k] !== undefined && params[k] !== null) postUrl = withParam(postUrl, k, params[k]);
+          });
           res = await fetch(postUrl, {
             method: 'POST',
             redirect: 'follow',
