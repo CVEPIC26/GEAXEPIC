@@ -461,6 +461,11 @@
     } catch (e) {
       $('sessionLabel').innerHTML = '&mdash;';
       updateConfigBanner();
+      // Surface backend errors at startup so the user knows the Apps Script
+      // deployment is misconfigured/outdated instead of silently looking fine.
+      if (SO_API.isConfigured()) {
+        toast(e.message || 'Gagal terhubung ke server.', 'error');
+      }
     }
   }
 

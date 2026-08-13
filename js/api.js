@@ -95,7 +95,14 @@ const SO_API = (function () {
       catch (e) { throw new ApiError('Respons server tidak valid (JSON rusak).'); }
 
       if (json && json.success === false) {
-        throw new ApiError(json.message || 'Operasi gagal.');
+        var msg = json.message || 'Operasi gagal.';
+        // Backend returns "Action tidak dikenal" when the deployed Apps Script
+        // is outdated and doesn't recognize the requested action. Give the user
+        // a clear, actionable hint instead of a confusing error.
+        if (/tidak dikenal/i.test(msg)) {
+          msg += '\n\nKemungkinan: code Apps Script yang ter-deploy belum versi terbaru. Jalankan clasp push lalu Deploy → Manage deployments → New version → Deploy, lalu coba lagi.';
+        }
+        throw new ApiError(msg);
       }
       return json ? json.data : null;
     } catch (err) {
