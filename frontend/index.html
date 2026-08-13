@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f2a43" />
+  <meta name="description" content="EPIC x GEA Stock Opname Scanner" />
+  <title>EPIC x GEA Stock Opname</title>
+  <link rel="icon" type="image/png" href="assets/logo-epic-gea.png" />
+  <link rel="apple-touch-icon" href="assets/logo-epic-gea.png" />
+  <link rel="stylesheet" href="css/app.css" />
+  <!-- ZXing barcode/QR scanner library (browser-based, uses device camera) -->
+  <script src="https://unpkg.com/@zxing/browser@0.1.5/index.min.js"></script>
+</head>
+<body>
+  <!-- ============================ HEADER ============================ -->
+  <header class="app-header" id="appHeader">
+    <div class="brand">
+      <img src="assets/logo-epic-gea.png" alt="EPIC x GEA logo" class="brand-logo" id="brandLogo" />
+      <div class="brand-text">
+        <span class="brand-title">EPIC &times; GEA</span>
+        <span class="brand-sub">STOCK OPNAME</span>
+      </div>
+    </div>
+    <div class="header-status" id="headerStatus" title="Sesi aktif">
+      <span id="sessionLabel">&mdash;</span>
+    </div>
+  </header>
+
+  <main class="app-main">
+
+    <!-- ===================== CONFIG BANNER ===================== -->
+    <section id="configBanner" class="config-banner hidden">
+      <div class="config-banner-inner">
+        <strong>API belum dikonfigurasi.</strong>
+        <span>Buka menu &rarr; set URL Web App Apps Script Anda.</span>
+        <button id="openConfigBtn" class="btn btn-sm">Konfigurasi</button>
+      </div>
+    </section>
+
+    <!-- ===================== PAGE: SCAN (HOME) ===================== -->
+    <section data-page="scan" class="page active" id="pageScan">
+      <div class="card center">
+        <h1 class="page-title">Stock Opname</h1>
+        <p class="muted">Pindai barcode produk untuk memulai.</p>
+        <button id="scanBtn" class="btn btn-primary btn-lg btn-block">Scan Produk</button>
+        <button id="manualSearchBtn" class="btn btn-secondary btn-block">Cari Produk / Input SKU Manual</button>
+        <div class="hint" id="soStatusHint" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- ===================== PAGE: SCANNER ===================== -->
+    <section data-page="scanner" class="page" id="pageScanner">
+      <div class="scanner-wrap">
+        <div class="scanner-head">
+          <button id="cancelScanBtn" class="btn btn-sm btn-ghost">&larr; Batal</button>
+          <span class="scanner-title">Pindai Barcode</span>
+          <span class="scanner-spacer"></span>
+        </div>
+        <div id="scannerViewport" class="scanner-viewport">
+          <video id="scannerVideo" playsinline muted></video>
+          <div class="scanner-reticle" aria-hidden="true"></div>
+          <div id="scannerError" class="scanner-error hidden"></div>
+        </div>
+        <div class="scanner-actions">
+          <button id="enterSkuBtn" class="btn btn-secondary btn-block">Input SKU Manual</button>
+          <button id="retryScanBtn" class="btn btn-primary btn-block hidden">Scan Ulang</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== PAGE: MANUAL SKU ===================== -->
+    <section data-page="manual" class="page" id="pageManual">
+      <div class="card">
+        <div class="card-head">
+          <button class="btn btn-sm btn-ghost nav-back" data-target="scan">&larr;</button>
+          <h2>Cari Produk</h2>
+        </div>
+        <label for="skuInput" class="field-label">SKU / Barcode</label>
+        <input id="skuInput" class="input input-lg" inputmode="numeric" autocomplete="off"
+               placeholder="Masukkan SKU lalu tekan cari" />
+        <button id="lookupSkuBtn" class="btn btn-primary btn-block">Cari Produk</button>
+
+        <div class="divider"><span>atau cari berdasarkan nama</span></div>
+
+        <label for="searchInput" class="field-label">Nama Produk</label>
+        <input id="searchInput" class="input" autocomplete="off" placeholder="Cth: Modul Expro" />
+        <button id="searchBtn" class="btn btn-secondary btn-block">Cari Nama</button>
+
+        <div id="searchResults" class="result-list" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- ===================== PAGE: PRODUCT DETAIL ===================== -->
+    <section data-page="product" class="page" id="pageProduct">
+      <div class="card" id="productCard">
+        <div class="card-head">
+          <button class="btn btn-sm btn-ghost nav-back" data-target="scan">&larr;</button>
+          <h2>Detail Produk</h2>
+        </div>
+
+        <div id="productInfo" class="product-info">
+          <!-- populated by JS -->
+        </div>
+
+        <div id="productNotFound" class="state-box state-error hidden">
+          <div class="state-title">SKU Tidak Ditemukan</div>
+          <p class="muted">Periksa kembali barcode atau cari produk secara manual.</p>
+          <div class="row">
+            <button class="btn btn-primary" id="notFoundScanUlang">Scan Ulang</button>
+            <button class="btn btn-secondary" id="notFoundManual">Input Manual</button>
+          </div>
+        </div>
+
+        <div id="productForm" class="product-form hidden">
+          <div class="field">
+            <label class="field-label" for="physicalInput">Jumlah Fisik</label>
+            <input id="physicalInput" class="input input-xl numeric" inputmode="numeric"
+                   pattern="[0-9]*" autocomplete="off" placeholder="0" />
+            <small class="hint">Masukkan 0 jika stok fisik habis (0 tetap dihitung cek).</small>
+          </div>
+
+          <div class="preview" id="previewBox" aria-live="polite">
+            <div class="preview-row"><span>Sistem</span><strong id="prevSistem">&ndash;</strong></div>
+            <div class="preview-row"><span>Fisik</span><strong id="prevFisik">&ndash;</strong></div>
+            <div class="preview-row"><span>Selisih</span><strong id="prevSelisih">&ndash;</strong></div>
+            <div class="preview-row"><span>Status</span><strong id="prevStatus">&ndash;</strong></div>
+          </div>
+
+          <button id="saveBtn" class="btn btn-success btn-lg btn-block">Simpan Hasil</button>
+          <div id="saveError" class="error-text hidden" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== PAGE: SAVE RESULT ===================== -->
+    <section data-page="saved" class="page" id="pageSaved">
+      <div class="card center">
+        <div class="state-box state-success">
+          <div class="check-mark" aria-hidden="true">&#10003;</div>
+          <div class="state-title">Hasil Tersimpan</div>
+        </div>
+        <div class="saved-detail" id="savedDetail"><!-- populated --></div>
+        <button id="nextScanBtn" class="btn btn-primary btn-lg btn-block">Scan Produk Berikutnya</button>
+      </div>
+    </section>
+
+    <!-- ===================== PAGE: DASHBOARD ===================== -->
+    <section data-page="dashboard" class="page" id="pageDashboard">
+      <div class="card">
+        <h2>Dashboard</h2>
+        <div id="dashboardSummary" class="dashboard-summary"><!-- populated --></div>
+        <h3>Per Kategori</h3>
+        <div class="table-wrap">
+          <table class="data-table" id="dashboardTable">
+            <thead>
+              <tr>
+                <th>Kategori</th><th>Total</th><th>Cek</th><th>Belum</th>
+                <th>Sesuai</th><th>Kurang</th><th>Lebih</th><th>Progres</th>
+              </tr>
+            </thead>
+            <tbody id="dashboardBody"></tbody>
+          </table>
+        </div>
+        <div id="dashboardEmpty" class="empty hidden">Belum ada data.</div>
+      </div>
+    </section>
+
+    <!-- ===================== PAGE: NOT CHECKED ===================== -->
+    <section data-page="notchecked" class="page" id="pageNotChecked">
+      <div class="card">
+        <h2>Produk Belum Cek</h2>
+        <div class="list-toolbar">
+          <input id="notCheckedSearch" class="input" placeholder="Filter nama/SKU" autocomplete="off" />
+          <span id="notCheckedCount" class="badge">0</span>
+        </div>
+        <div id="notCheckedList" class="result-list"></div>
+        <div id="notCheckedEmpty" class="empty">Tidak ada produk belum cek.</div>
+      </div>
+    </section>
+
+    <!-- ===================== PAGE: DIFFERENCE ===================== -->
+    <section data-page="difference" class="page" id="pageDifference">
+      <div class="card">
+        <h2>Produk Selisih</h2>
+        <div class="list-toolbar">
+          <select id="diffCategoryFilter" class="input"><option value="">Semua Kategori</option></select>
+          <span id="diffCount" class="badge">0</span>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table compact">
+            <thead>
+              <tr><th>SKU</th><th>Produk</th><th>Sistem</th><th>Fisik</th><th>Selisih</th><th>Status</th></tr>
+            </thead>
+            <tbody id="diffBody"></tbody>
+          </table>
+        </div>
+        <div id="diffEmpty" class="empty">Tidak ada produk selisih.</div>
+      </div>
+    </section>
+
+    <!-- ===================== PAGE: HISTORY ===================== -->
+    <section data-page="history" class="page" id="pageHistory">
+      <div class="card">
+        <h2>Riwayat (LOG_SO)</h2>
+        <div class="table-wrap">
+          <table class="data-table compact">
+            <thead>
+              <tr><th>Waktu</th><th>SKU</th><th>Produk</th><th>Sis</th><th>Fisik</th><th>Selisih</th><th>Status</th><th>User</th></tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+        <div id="historyEmpty" class="empty">Belum ada riwayat.</div>
+      </div>
+    </section>
+
+    <!-- ===================== PAGE: MORE (admin) ===================== -->
+    <section data-page="more" class="page" id="pageMore">
+      <div class="card">
+        <h2>Pengaturan</h2>
+        <label class="field-label" for="apiUrlInput">URL Web App (Apps Script)</label>
+        <input id="apiUrlInput" class="input" type="url" autocomplete="off"
+               placeholder="https://script.google.com/macros/s/.../exec" />
+        <button id="saveApiUrlBtn" class="btn btn-primary btn-block">Simpan URL</button>
+        <button id="syncMasterBtn" class="btn btn-secondary btn-block">Sinkronkan MASTER_PRODUK</button>
+        <button id="startSessionBtn" class="btn btn-secondary btn-block">Mulai Sesi SO Baru</button>
+        <hr class="sep" />
+        <button id="resetBtn" class="btn btn-danger btn-block">Reset SO</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===================== RESET CONFIRM MODAL ===================== -->
+  <div id="resetModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-title">Reset Stock Opname?</div>
+      <p>Ini akan menghapus <strong>Fisik Hitung, Selisih, dan Status</strong> saat ini. SKU, Produk, dan Fisik Sistem tidak dihapus. Riwayat LOG_SO tetap aman.</p>
+      <div class="row row-end">
+        <button id="resetCancel" class="btn btn-ghost">Batal</button>
+        <button id="resetConfirm" class="btn btn-danger">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LOADING OVERLAY ===================== -->
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="loading-box">
+      <div class="spinner" aria-hidden="true"></div>
+      <div id="loadingText">Memproses...</div>
+    </div>
+  </div>
+
+  <!-- ===================== TOAST ===================== -->
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <!-- ===================== BOTTOM NAV ===================== -->
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="nav-item active" data-target="scan"><span class="nav-ico">&#9650;</span><span>Scan</span></button>
+    <button class="nav-item" data-target="dashboard"><span class="nav-ico">&#9632;</span><span>Dashboard</span></button>
+    <button class="nav-item" data-target="notchecked"><span class="nav-ico">&#9679;</span><span>Belum Cek</span></button>
+    <button class="nav-item" data-target="difference"><span class="nav-ico">&#9651;</span><span>Selisih</span></button>
+    <button class="nav-item" data-target="history"><span class="nav-ico">&#9776;</span><span>Riwayat</span></button>
+  </nav>
+
+  <script src="js/api.js"></script>
+  <script src="js/scanner.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

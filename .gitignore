@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+*.local
+
+# Google Apps Script credentials (never commit)
+appsscript.json credentials
+.clasp.json
+.clasprc.json
+*credentials*.json
+*service-account*.json
+*secret*.json
+*token*.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Temporary / cache
+.agent_tmp/
+.cache/
+tmp/
