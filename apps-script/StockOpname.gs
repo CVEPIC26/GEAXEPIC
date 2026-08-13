@@ -27,9 +27,10 @@ function getProductBySku(rawSku) {
     if (!sheet) {
       return errorResponse_('Sheet kategori "' + product.sheet + '" tidak ditemukan.');
     }
-    var row = Number(product.baris);
-    if (!row || row < 2) {
-      return errorResponse_('Baris sumber tidak valid untuk SKU ini.');
+    // Resolve the actual row by scanning the SKU column (robust to row shifts).
+    var row = resolveRowBySku_(sheet, product.sku, product.baris);
+    if (!row) {
+      return errorResponse_('SKU tidak ditemukan di sheet "' + product.sheet + '". Sinkronkan MASTER_PRODUK lalu coba lagi.');
     }
     var col = CONFIG.COLUMNS;
     // Read A..F for this single source row.
@@ -119,9 +120,12 @@ function savePhysicalCount(data) {
       if (!sheet) {
         return errorResponse_('Sheet kategori "' + product.sheet + '" tidak ditemukan.');
       }
-      var row = Number(product.baris);
-      if (!row || row < 2) {
-        return errorResponse_('Baris sumber tidak valid untuk SKU ini.');
+      // Resolve the actual row by scanning the SKU column. This is robust
+      // against row shifts (inserts/deletes) that would make the stored
+      // MASTER_PRODUK "baris" stale and cause writes to land on the wrong row.
+      var row = resolveRowBySku_(sheet, sku, product.baris);
+      if (!row) {
+        return errorResponse_('SKU tidak ditemukan di sheet "' + product.sheet + '". Sinkronkan MASTER_PRODUK lalu coba lagi.');
       }
 
       // Read current system stock from source row (authoritative under lock).
@@ -342,4 +346,34 @@ function getSOStatus() {
   } catch (err) {
     return handleError_('Gagal memuat status SO.', err);
   }
+}
+
+/**
+ * Resolve the actual spreadsheet row for a SKU within a category sheet.
+ * Fast path: verify the SKU at the stored MASTER_PRODUK row (if any).
+ * Fallback: scan the SKU column (A) for a normalized match.
+ * Returns the 1-based row number, or 0 if not found. Robust against row
+ * shifts (inserts/deletes) that would make the stored "baris" stale.
+ * @param {Sheet} sheet category sheet
+ * @param {string} sku normalized SKU to find
+ * @param {*} hintBaris optional stored row hint
+ * @returns {number}
+ */
+function resolveRowBySku_(sheet, sku, hintBaris) {
+  var target = normalizeSku_(sku);
+  if (!target) return 0;
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return 0;
+  var skuCol = CONFIG.COLUMNS.SKU; // column A
+
+  var hint = Number(hintBaris);
+  if (hint && hint >= 2 && hint <= lastRow) {
+    if (normalizeSku_(sheet.getRange(hint, skuCol, 1, 1).getValue()) === target) return hint;
+  }
+
+  var values = sheet.getRange(2, skuCol, lastRow - 1, 1).getValues();
+  for (var i = 0; i < values.length; i++) {
+    if (normalizeSku_(values[i][0]) === target) return i + 2;
+  }
+  return 0;
 }
