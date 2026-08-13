@@ -1,0 +1,4 @@
+# Keep clasp from uploading docs/setup files or the clasp config itself.
+# clasp pushes everything under rootDir (./apps-script) by default.
+**/README.md
+**/*.md

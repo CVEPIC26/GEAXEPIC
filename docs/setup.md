@@ -133,7 +133,7 @@ npm run serve
 ```
 
 Option B — static hosting (GitHub Pages, Netlify, Vercel, etc.):
-- Publish the `frontend/` directory (root of the site must serve `index.html`).
+- The app root is published directly (index.html lives at the repo root).
 
 > **Camera requires a secure context.** `localhost` works for desktop testing, but
 > real phones need **HTTPS**. Use a host that provides HTTPS.
@@ -169,7 +169,7 @@ Option B — static hosting (GitHub Pages, Netlify, Vercel, etc.):
 | Spreadsheet ID (standalone only) | `apps-script/Config.gs` `SPREADSHEET_ID` | your sheet ID (or `''` for bound) |
 | Web App URL | app **Pengaturan** page | the `/exec` URL |
 | Category sheets | Google Spreadsheet | create with the exact headers |
-| Logo | `frontend/assets/logo-epic-gea.png` | replace with official logo |
+| Logo | `assets/logo-epic-gea.png` | replace with official logo |
 
 The application contains **no fake production data** and **no hard-coded products**;
 it reads the actual spreadsheet dynamically.

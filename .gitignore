@@ -12,13 +12,15 @@ build/
 *.local
 
 # Google Apps Script credentials (never commit)
-appsscript.json credentials
+# NOTE: apps-script/appsscript.json is a MANIFEST (scopes/webapp config) and
+# MUST be committed — it is not a secret. Only credential files are ignored.
 .clasp.json
 .clasprc.json
 *credentials*.json
 *service-account*.json
 *secret*.json
 *token*.json
+*oauth*.json
 
 # Logs
 *.log

@@ -20,7 +20,7 @@ Android phones.
 | Backend | Google Apps Script Web App |
 | Database | Google Sheets (category sheets are the source of truth) |
 | UI language | Indonesian |
-| Logo | Original placeholder `frontend/assets/logo-epic-gea.png` (replace later) |
+| Logo | Original placeholder `assets/logo-epic-gea.png` (replace later) |
 
 ---
 
@@ -78,19 +78,21 @@ Google Spreadsheet
 
 ```
 GEAXEPIC/
-├── frontend/
-│   ├── index.html
-│   ├── assets/
-│   │   ├── logo-epic-gea.png      # placeholder logo (replace later)
-│   │   └── generate_logo.py       # script that generated the placeholder
-│   ├── css/
-│   │   └── app.css
-│   └── js/
-│       ├── api.js                 # backend client
-│       ├── scanner.js            # camera scanner wrapper
-│       ├── dashboard.js          # rendering helpers
-│       └── app.js                 # main controller
+├── index.html                    # app entry (served at repo root by GitHub Pages)
+├── assets/
+│   ├── logo-epic-gea.png         # placeholder logo (replace later)
+│   └── generate_logo.py          # script that generated the placeholder
+├── css/
+│   └── app.css
+├── js/
+│   ├── api.js                    # backend client
+│   ├── scanner.js                # camera scanner wrapper
+│   ├── dashboard.js              # rendering helpers
+│   └── app.js                    # main controller
+├── 404.html                      # SPA fallback
+├── .nojekyll                     # bypass Jekyll so css/js/assets are served as-is
 ├── apps-script/
+│   ├── appsscript.json           # Apps Script manifest (scopes + webapp config)
 │   ├── Code.gs                   # top-level, custom menu, setup
 │   ├── Config.gs                 # centralized configuration
 │   ├── Api.gs                    # doGet/doPost + action dispatch
@@ -100,6 +102,8 @@ GEAXEPIC/
 │   └── Utils.gs                  # shared helpers
 ├── docs/
 │   └── setup.md                  # step-by-step setup guide
+├── .github/workflows/deploy.yml  # deploys the app root to GitHub Pages
+├── .clasp.json / .claspignore   # optional: one-command `clasp push` deploy
 ├── README.md
 ├── .gitignore
 └── package.json
@@ -149,7 +153,17 @@ See **`docs/setup.md`** for the full step-by-step guide. Summary:
 1. Create a Google Spreadsheet and add your category sheets (MODUL, SERAGAM, …)
    with the headers above and your product rows.
 2. Open **Extensions → Apps Script**.
-3. Create files matching `apps-script/*.gs` and paste the contents (or use `clasp`).
+3. Upload the backend code — choose ONE method:
+   - **Option A — `clasp` (one command, recommended):**
+     ```bash
+     npm install -g @google/clasp
+     clasp login
+     # put your Script ID in .clasp.json (from the Apps Script editor URL)
+     clasp open        # confirm it opens the correct project
+     clasp push        # uploads ALL apps-script/*.gs + appsscript.json
+     ```
+   - **Option B — manual:** copy each `apps-script/*.gs` file's contents
+     into a script file of the same name in the Apps Script editor.
 4. In `Config.gs`, set `CONFIG.SPREADSHEET_ID` (or leave `''` for a bound project).
 5. Run `setupSheets` once (creates MASTER_PRODUK / LOG_SO / SO_SESSION / DASHBOARD_SO).
 6. Run `syncMasterProduk` to build the index from your category sheets.
@@ -159,11 +173,11 @@ See **`docs/setup.md`** for the full step-by-step guide. Summary:
    - Who has access: **Anyone with the link** (or your domain)
    - Copy the `/exec` URL.
 
-> For manual deployment (without `clasp`), copy each `apps-script/*.gs` file's
-> contents into a script file of the same name in the Apps Script editor.
+> The committed `apps-script/appsscript.json` declares the OAuth scopes and the
+> web-app configuration, so `clasp push` deploys with the correct permissions
+> without any extra "review access" steps.
 
 ---
-
 ## 7. Deployment Instructions (Frontend)
 
 The frontend is static. Host it anywhere (GitHub Pages, Netlify, any static host),
@@ -222,14 +236,14 @@ This reads SKU + Produk from every category sheet and rewrites MASTER_PRODUK.
 
 ## 11. Replace Logo
 
-Replace the file `frontend/assets/logo-epic-gea.png` with the official logo
+Replace the file `assets/logo-epic-gea.png` with the official logo
 (keep the same filename). The app references it by relative path only — no logo
 is hard-coded into application logic.
 
 You can regenerate a fresh placeholder with:
 
 ```bash
-python3 frontend/assets/generate_logo.py
+python3 assets/generate_logo.py
 ```
 
 ---

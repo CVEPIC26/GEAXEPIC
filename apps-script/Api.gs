@@ -61,14 +61,11 @@ function handleRequest_(e, method) {
   try {
     if (method === 'post') {
       var body = e && e.postData && e.postData.contents ? e.postData.contents : '';
-      var ctype = e && e.postData && e.postData.type ? e.postData.type : '';
       if (body) {
-        if (ctype.indexOf('application/json') !== -1) {
-          try { params = JSON.parse(body); } catch (jsonErr) { params = {}; }
-        } else {
-          // form-encoded
-          try { params = parseForm_(body); } catch (fe) { params = {}; }
-        }
+        // Parse robustly regardless of Content-Type. The browser client POSTs
+        // JSON as text/plain (to avoid a CORS preflight), so we cannot rely on
+        // the declared content type. Try JSON first, then fall back to form.
+        params = parseBody_(body);
       }
     }
     // Merge query string params (works for both GET and POST).
@@ -102,6 +99,24 @@ function handleRequest_(e, method) {
 function jsonOut_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Parse a request body robustly. Tries JSON first (the browser client sends
+ * JSON as text/plain to avoid CORS preflight), then falls back to form-encoded
+ * parsing. Returns an empty object if the body cannot be parsed.
+ * @param {string} body
+ * @returns {Object}
+ */
+function parseBody_(body) {
+  if (!body) return {};
+  var trimmed = String(body).trim();
+  // JSON bodies start with '{' or '['.
+  if (trimmed.charAt(0) === '{' || trimmed.charAt(0) === '[') {
+    try { return JSON.parse(trimmed); } catch (e) { /* fall through */ }
+  }
+  // Form-encoded fallback (key=value&key=value).
+  return parseForm_(trimmed);
 }
 
 /**

@@ -5,8 +5,8 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "serve": "python3 -m http.server 8080 --directory frontend",
-    "serve:frontend": "python3 -m http.server 8080 --directory frontend"
+    "serve": "python3 -m http.server 8080",
+    "deploy:apps": "clasp push"
   },
   "keywords": [
     "stock-opname",
