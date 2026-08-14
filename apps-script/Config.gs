@@ -101,12 +101,121 @@ var CONFIG = {
 };
 
 /**
- * Resolve the active spreadsheet (bound or standalone via SPREADSHEET_ID).
+ * Resolve the active spreadsheet.
+ *
+ * Lookup order:
+ *   1. A spreadsheet ID saved at runtime via setSpreadsheetId() (stored in
+ *      Script Properties) — lets the operator switch files without redeploying.
+ *   2. CONFIG.SPREADSHEET_ID (hard-coded at deploy time).
+ *   3. The bound/active spreadsheet (container-bound projects).
+ *
  * @returns {Spreadsheet}
  */
 function getSpreadsheet_() {
+  var storedId = getStoredSpreadsheetId_();
+  if (storedId) {
+    return SpreadsheetApp.openById(storedId);
+  }
   if (CONFIG.SPREADSHEET_ID && CONFIG.SPREADSHEET_ID.length > 0) {
     return SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
   }
   return SpreadsheetApp.getActiveSpreadsheet();
+}
+
+/**
+ * Read the runtime-overridden spreadsheet ID from Script Properties.
+ * @returns {string}
+ */
+function getStoredSpreadsheetId_() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var id = props.getProperty('SPREADSHEET_ID');
+    return id && String(id).length > 0 ? String(id) : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+/**
+ * Parse a raw input into a spreadsheet ID. Accepts either a bare ID or a
+ * Google Sheets URL (docs.google.com/spreadsheets/d/ID/...). Returns '' if no
+ * ID can be extracted.
+ * @param {string} raw
+ * @returns {string}
+ */
+function parseSpreadsheetId_(raw) {
+  if (!raw) return '';
+  var s = String(raw).trim();
+  if (!s) return '';
+  // Full URL form: .../d/<ID>/edit  (or /d/<ID>/export, etc.)
+  var m = s.match(/\/d\/([a-zA-Z0-9_-]{20,})/);
+  if (m) return m[1];
+  // Bare ID form: accept long alphanumeric tokens only.
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(s)) return s;
+  return '';
+}
+
+/**
+ * Switch the backend to a different spreadsheet file at runtime.
+ *
+ * Accepts a bare spreadsheet ID or a full Google Sheets URL. Validates by
+ * opening the file, then persists the ID to Script Properties so every later
+ * request uses it. Returns the resolved ID + spreadsheet title.
+ *
+ * @param {string} raw  spreadsheet ID or URL
+ * @returns {{success: boolean, data?: Object, message?: string}}
+ */
+function setSpreadsheetId(raw) {
+  try {
+    var id = parseSpreadsheetId_(raw);
+    if (!id) {
+      return errorResponse_('ID/URL spreadsheet tidak valid. Tempel ID atau URL dari Google Sheets (https://docs.google.com/spreadsheets/d/.../edit).');
+    }
+    var ss = SpreadsheetApp.openById(id);
+    if (!ss) {
+      return errorResponse_('Spreadsheet tidak dapat dibuka. Pastikan script punya akses ke file tersebut.');
+    }
+    PropertiesService.getScriptProperties().setProperty('SPREADSHEET_ID', id);
+    return successResponse_({
+      spreadsheetId: id,
+      title: ss.getName(),
+      url: ss.getUrl()
+    });
+  } catch (err) {
+    return handleError_('Gagal mengganti spreadsheet. Periksa ID/URL dan otorisasi akses file.', err);
+  }
+}
+
+/**
+ * Clear the runtime spreadsheet override, reverting to CONFIG.SPREADSHEET_ID /
+ * the bound spreadsheet.
+ * @returns {{success: boolean, data?: Object}}
+ */
+function clearSpreadsheetId() {
+  try {
+    PropertiesService.getScriptProperties().deleteProperty('SPREADSHEET_ID');
+    return successResponse_({ cleared: true });
+  } catch (err) {
+    return handleError_('Gagal meriset spreadsheet.', err);
+  }
+}
+
+/**
+ * Return information about the currently active spreadsheet (resolved ID,
+ * title, url, and whether it is a runtime override).
+ * @returns {{success: boolean, data?: Object}}
+ */
+function getSpreadsheetInfo() {
+  try {
+    var storedId = getStoredSpreadsheetId_();
+    var ss = getSpreadsheet_();
+    return successResponse_({
+      spreadsheetId: storedId || (CONFIG.SPREADSHEET_ID || ''),
+      title: ss.getName(),
+      url: ss.getUrl(),
+      overridden: !!storedId
+    });
+  } catch (err) {
+    return handleError_('Gagal memuat info spreadsheet.', err);
+  }
 }

@@ -8,7 +8,7 @@
   <title>EPIC x GEA Stock Opname</title>
   <link rel="icon" type="image/png" href="assets/logo-epic-gea.png?v=2" />
   <link rel="apple-touch-icon" href="assets/logo-epic-gea.png?v=2" />
-  <link rel="stylesheet" href="css/app.css?v=20260813b" />
+  <link rel="stylesheet" href="css/app.css?v=20260814a" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
@@ -225,8 +225,25 @@
         <label class="field-label" for="apiUrlInput">URL Web App (Apps Script)</label>
         <input id="apiUrlInput" class="input" type="url" autocomplete="off"
                placeholder="https://script.google.com/macros/s/.../exec" />
-        <button id="saveApiUrlBtn" class="btn btn-primary btn-block">Simpan URL</button>
+        <div class="row">
+          <button id="saveApiUrlBtn" class="btn btn-primary btn-block">Simpan URL</button>
+          <button id="scanApiUrlBtn" class="btn btn-secondary btn-block">Scan URL</button>
+        </div>
         <button id="testConnBtn" class="btn btn-secondary btn-block">Test Koneksi</button>
+
+        <hr class="sep" />
+
+        <label class="field-label" for="spreadsheetInput">File Spreadsheet</label>
+        <div id="spreadsheetInfo" class="hint" aria-live="polite">&mdash;</div>
+        <input id="spreadsheetInput" class="input" type="text" autocomplete="off"
+               placeholder="ID atau URL Google Sheets" />
+        <div class="row">
+          <button id="saveSpreadsheetBtn" class="btn btn-primary btn-block">Ganti Spreadsheet</button>
+          <button id="scanSpreadsheetBtn" class="btn btn-secondary btn-block">Scan</button>
+        </div>
+        <button id="resetSpreadsheetBtn" class="btn btn-ghost btn-block">Kembali ke Default</button>
+
+        <hr class="sep" />
         <button id="syncMasterBtn" class="btn btn-secondary btn-block">Sinkronkan MASTER_PRODUK</button>
         <button id="startSessionBtn" class="btn btn-secondary btn-block">Mulai Sesi SO Baru</button>
         <hr class="sep" />
@@ -234,6 +251,21 @@
       </div>
     </section>
   </main>
+
+  <!-- ===================== URL/QR SCANNER MODAL ===================== -->
+  <div id="urlScanModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-title" id="urlScanTitle">Pindai Kode</div>
+      <div id="urlScanViewport" class="scanner-viewport">
+        <video id="urlScanVideo" playsinline muted></video>
+        <div class="scanner-reticle" aria-hidden="true"></div>
+        <div id="urlScanError" class="scanner-error hidden"></div>
+      </div>
+      <div class="row row-end">
+        <button id="urlScanCancel" class="btn btn-ghost">Batal</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ===================== RESET CONFIRM MODAL ===================== -->
   <div id="resetModal" class="modal hidden" role="dialog" aria-modal="true">
@@ -267,9 +299,9 @@
     <button class="nav-item" data-target="history"><span class="nav-ico">&#9776;</span><span>Riwayat</span></button>
   </nav>
 
-  <script src="js/api.js?v=20260813b"></script>
-  <script src="js/scanner.js?v=20260813b"></script>
-  <script src="js/dashboard.js?v=20260813b"></script>
-  <script src="js/app.js?v=20260813b"></script>
+  <script src="js/api.js?v=20260814a"></script>
+  <script src="js/scanner.js?v=20260814a"></script>
+  <script src="js/dashboard.js?v=20260814a"></script>
+  <script src="js/app.js?v=20260814a"></script>
 </body>
 </html>

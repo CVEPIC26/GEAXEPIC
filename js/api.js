@@ -134,6 +134,9 @@ const SO_API = (function () {
     getSOStatus: () => call('getSOStatus', {}, { method: 'GET' }),
     startSession: (sessionId) => call('startSession', { sessionId: sessionId || '' }, { method: 'POST' }),
     endSession: () => call('endSession', {}, { method: 'POST' }),
-    getSessions: () => call('getSessions', {}, { method: 'GET' })
+    getSessions: () => call('getSessions', {}, { method: 'GET' }),
+    setSpreadsheetId: (spreadsheetId) => call('setSpreadsheetId', { spreadsheetId: spreadsheetId || '' }, { method: 'POST' }),
+    clearSpreadsheetId: () => call('clearSpreadsheetId', {}, { method: 'POST' }),
+    getSpreadsheetInfo: () => call('getSpreadsheetInfo', {}, { method: 'GET' })
   };
 })();

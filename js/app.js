@@ -366,6 +366,25 @@
     updateConfigBanner();
     toast('URL disimpan.', 'success');
     loadSOStatus();
+    loadSpreadsheetInfo();
+  });
+
+  // Scan Apps Script Web App URL from a QR/barcode.
+  $('scanApiUrlBtn').addEventListener('click', () => {
+    openUrlScanner('Pindai URL Web App', (code) => {
+      const url = String(code).trim();
+      $('apiUrlInput').value = url;
+      if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(url)) {
+        toast('Kode bukan URL Web App yang valid. Periksa kembali.', 'error');
+        return false; // keep scanner open so the user can try again
+      }
+      SO_API.setApiUrl(url);
+      updateConfigBanner();
+      toast('URL tersimpan dari scan.', 'success');
+      loadSOStatus();
+      loadSpreadsheetInfo();
+      return true; // close scanner
+    });
   });
 
   $('testConnBtn').addEventListener('click', async () => {
@@ -386,6 +405,101 @@
     }
   });
   $('apiUrlInput').value = SO_API.getApiUrl();
+
+  // ---- Spreadsheet switching ---------------------------------------------
+  $('saveSpreadsheetBtn').addEventListener('click', async () => {
+    if (!requireApi()) return;
+    const raw = $('spreadsheetInput').value.trim();
+    if (!raw) { toast('Masukkan ID atau URL Google Sheets.', 'error'); return; }
+    showLoading('Mengganti spreadsheet...');
+    try {
+      const data = await SO_API.setSpreadsheetId(raw);
+      hideLoading();
+      toast('Spreadsheet diganti: ' + (data.title || data.spreadsheetId), 'success');
+      renderSpreadsheetInfo(data);
+      loadSOStatus();
+    } catch (err) { hideLoading(); toast(err.message || 'Gagal mengganti spreadsheet.', 'error'); }
+  });
+
+  $('scanSpreadsheetBtn').addEventListener('click', () => {
+    if (!requireApi()) return;
+    openUrlScanner('Pindai URL Spreadsheet', (code) => {
+      const raw = String(code).trim();
+      if (!/\/d\/[a-zA-Z0-9_-]{20,}/.test(raw) && !/^[a-zA-Z0-9_-]{20,}$/.test(raw)) {
+        toast('Kode bukan ID/URL spreadsheet yang valid.', 'error');
+        return false;
+      }
+      $('spreadsheetInput').value = raw;
+      toast('Kode terbaca. Tekan "Ganti Spreadsheet" untuk menerapkan.', 'success');
+      return true;
+    });
+  });
+
+  $('resetSpreadsheetBtn').addEventListener('click', async () => {
+    if (!requireApi()) return;
+    showLoading('Mereset spreadsheet...');
+    try {
+      await SO_API.clearSpreadsheetId();
+      hideLoading();
+      toast('Spreadsheet dikembalikan ke default.', 'success');
+      $('spreadsheetInput').value = '';
+      loadSpreadsheetInfo();
+      loadSOStatus();
+    } catch (err) { hideLoading(); toast(err.message || 'Gagal meriset spreadsheet.', 'error'); }
+  });
+
+  function renderSpreadsheetInfo(data) {
+    const el = $('spreadsheetInfo');
+    if (!data) { el.innerHTML = '&mdash;'; return; }
+    const title = data.title ? esc(data.title) : '(tanpa nama)';
+    const id = data.spreadsheetId ? esc(String(data.spreadsheetId)) : '';
+    const tag = data.overridden ? ' <span class="badge">aktif</span>' : '';
+    el.innerHTML = title + (id ? ' &middot; <small>' + id + '</small>' : '') + tag;
+  }
+
+  async function loadSpreadsheetInfo() {
+    if (!SO_API.isConfigured()) { renderSpreadsheetInfo(null); return; }
+    try {
+      const data = await SO_API.getSpreadsheetInfo();
+      renderSpreadsheetInfo(data);
+    } catch (e) { renderSpreadsheetInfo(null); }
+  }
+
+  // ---- Reusable URL/QR scanner modal -------------------------------------
+  // openUrlScanner(title, onCode): onCode(code) returns true to close the
+  // scanner, or false to keep it open for another attempt.
+  function openUrlScanner(title, onCode) {
+    const modal = $('urlScanModal');
+    const video = $('urlScanVideo');
+    const errBox = $('urlScanError');
+    $('urlScanTitle').textContent = title || 'Pindai Kode';
+    errBox.classList.add('hidden');
+    video.classList.remove('hidden');
+    modal.classList.remove('hidden');
+
+    SOScanner.resetLast();
+    SOScanner.start(video, (code) => {
+      const done = onCode ? onCode(code) : true;
+      if (done) closeUrlScanner();
+    }).catch((err) => {
+      showUrlScanError(err && err.message ? err.message : 'Gagal memulai kamera.');
+    });
+  }
+
+  function showUrlScanError(msg) {
+    const video = $('urlScanVideo');
+    const box = $('urlScanError');
+    video.classList.add('hidden');
+    box.textContent = msg;
+    box.classList.remove('hidden');
+  }
+
+  function closeUrlScanner() {
+    SOScanner.stop();
+    $('urlScanModal').classList.add('hidden');
+  }
+
+  $('urlScanCancel').addEventListener('click', closeUrlScanner);
 
   $('syncMasterBtn').addEventListener('click', async () => {
     if (!requireApi()) return;
@@ -474,11 +588,12 @@
 
   // ---- Init --------------------------------------------------------------
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && isScanning) { SOScanner.stop(); }
+    if (document.hidden) { SOScanner.stop(); if (!$('urlScanModal').classList.contains('hidden')) $('urlScanModal').classList.add('hidden'); }
   });
   window.addEventListener('beforeunload', () => { SOScanner.stop(); });
 
   updateConfigBanner();
   loadSOStatus();
+  loadSpreadsheetInfo();
   showPage('scan');
 })();

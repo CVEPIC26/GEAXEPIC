@@ -17,6 +17,9 @@
  *   startSession            -> { sessionId? }
  *   endSession              -> {}
  *   getSessions             -> {}
+ *   setSpreadsheetId        -> { spreadsheetId }  (id or Google Sheets URL)
+ *   clearSpreadsheetId      -> {}
+ *   getSpreadsheetInfo      -> {}
  *
  * All responses are JSON: { success: boolean, data?|message? }
  */
@@ -34,7 +37,10 @@ var ACTIONS = {
   'getSOStatus': function (p) { return getSOStatus(); },
   'startSession': function (p) { return startSession(p && p.sessionId); },
   'endSession': function (p) { return endSession(); },
-  'getSessions': function (p) { return getSessions(); }
+  'getSessions': function (p) { return getSessions(); },
+  'setSpreadsheetId': function (p) { return setSpreadsheetId(p && p.spreadsheetId); },
+  'clearSpreadsheetId': function (p) { return clearSpreadsheetId(); },
+  'getSpreadsheetInfo': function (p) { return getSpreadsheetInfo(); }
 };
 
 /**
