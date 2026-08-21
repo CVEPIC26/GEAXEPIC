@@ -226,7 +226,8 @@
     try {
       const res = await SO_API.savePhysicalCount({
         sku: currentProduct.sku,
-        fisikHitung: fisik
+        fisikHitung: fisik,
+        user: currentUser
       });
       renderSaved(res);
       hideLoading();
@@ -366,6 +367,26 @@
 
   // ---- Setup (wajib setiap buka aplikasi) ---------------------------------
   const API_URL_RE = /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/;
+  const USER_STORAGE_KEY = 'epic_gea_so_user';
+  let currentUser = ''; // nama petugas + perangkat, dikirim ke LOG_SO
+
+  // Label perangkat dari userAgent, mis. "Android/Chrome", "iPhone/Safari".
+  function getDeviceLabel() {
+    const ua = navigator.userAgent || '';
+    let os = 'Perangkat';
+    if (/android/i.test(ua)) os = 'Android';
+    else if (/iphone/i.test(ua)) os = 'iPhone';
+    else if (/ipad/i.test(ua)) os = 'iPad';
+    else if (/windows/i.test(ua)) os = 'Windows';
+    else if (/macintosh|mac os/i.test(ua)) os = 'Mac';
+    else if (/linux/i.test(ua)) os = 'Linux';
+    let br = '';
+    if (/edg\//i.test(ua)) br = 'Edge';
+    else if (/chrome\//i.test(ua)) br = 'Chrome';
+    else if (/firefox\//i.test(ua)) br = 'Firefox';
+    else if (/safari\//i.test(ua)) br = 'Safari';
+    return br ? os + '/' + br : os;
+  }
 
   function setSetupStatus(msg, isError) {
     const el = $('setupStatus');
@@ -383,7 +404,9 @@
   }
 
   async function connectFromSetup() {
+    const name = $('setupUserInput').value.trim();
     const url = $('setupApiUrlInput').value.trim();
+    if (!name) { setSetupStatus('Isi nama petugas terlebih dahulu (tercatat di LOG_SO).', true); $('setupUserInput').focus(); return; }
     if (!url) { setSetupStatus('Masukkan URL Web App atau scan kodenya.', true); return; }
     if (!API_URL_RE.test(url)) {
       setSetupStatus('URL harus berformat: https://script.google.com/macros/s/.../exec', true);
@@ -395,7 +418,9 @@
     SO_API.setApiUrl(url);
     try {
       await SO_API.testConnection();
-      toast('Terhubung ke server.', 'success');
+      currentUser = name + ' · ' + getDeviceLabel();
+      localStorage.setItem(USER_STORAGE_KEY, name);
+      toast('Terhubung ke server. Petugas: ' + name, 'success');
       setSetupStatus('', false);
       enterApp();
     } catch (err) {
@@ -684,8 +709,10 @@
   SO_API.setApiUrl('');
   if (prevApiUrl) {
     $('setupApiUrlInput').value = prevApiUrl;
-    setSetupStatus('URL sesi sebelumnya sudah terisi. Tekan "Hubungkan" atau scan ulang.', false);
+    setSetupStatus('URL sesi sebelumnya sudah terisi. Isi nama, lalu tekan "Hubungkan" atau scan ulang.', false);
   }
+  const prevUser = localStorage.getItem(USER_STORAGE_KEY);
+  if (prevUser) $('setupUserInput').value = prevUser;
 
   updateConfigBanner();
   showPage('setup');

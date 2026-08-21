@@ -21,7 +21,7 @@ Google Apps Script backend (Google Sheets as database).
 ## Conventions
 - UI labels in Indonesian.
 - Cache-bust: append `?v=YYYYMMDDx` to JS/CSS in `index.html` on changes
-  (last: `?v=20260821a`).
+  (last: `?v=20260821b`).
 - Backend response shape: `{ success: boolean, data?|message? }`.
 - `getSpreadsheet_()` lookup order: runtime Script Property `SPREADSHEET_ID`
   → `CONFIG.SPREADSHEET_ID` → bound/active spreadsheet.
@@ -33,6 +33,9 @@ Google Apps Script backend (Google Sheets as database).
   di-guard flag `connected` di app.js.
 - Scan Apps Script Web App URL from QR/barcode (`scanApiUrlBtn` + reusable
   `openUrlScanner` modal in app.js).
+- Petugas tercatat di LOG_SO: setup page punya input nama (`setupUserInput`),
+  dikirim sebagai `user` ("Nama · Perangkat/Browser") ke `savePhysicalCount`.
+  Backend fallback `getUserEmail_()` (Session effective) bila `user` kosong.
 - Switch active Spreadsheet at runtime via `setSpreadsheetId` (accepts bare ID
   or `docs.google.com/.../d/<ID>/edit` URL). Persisted in Script Properties.
 - Reset spreadsheet override via `clearSpreadsheetId`.
