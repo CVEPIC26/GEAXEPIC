@@ -117,6 +117,8 @@
 
   async function handleScanned(code) {
     isScanning = false;
+    // Umpan balik taktil di perangkat yang mendukung (diam di desktop/iOS).
+    if (navigator.vibrate) { try { navigator.vibrate([60, 40, 60]); } catch (e) {} }
     toast('Barcode terbaca: ' + code, 'success');
     await lookupAndShowProduct(code);
   }

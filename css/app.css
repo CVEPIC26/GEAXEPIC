@@ -210,7 +210,7 @@ h3 { font-size: 15px; margin: 14px 0 8px; color: var(--orange); }
 }
 .scanner-viewport video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .scanner-reticle {
-  position: absolute; inset: 18% 12%; border: 2px solid rgba(255,255,255,.9);
+  position: absolute; inset: 22% 8%; border: 2px solid rgba(255,255,255,.9);
   border-radius: 10px; box-shadow: 0 0 0 2000px rgba(0,0,0,.25); pointer-events: none;
 }
 .scanner-error {
@@ -218,6 +218,26 @@ h3 { font-size: 15px; margin: 14px 0 8px; color: var(--orange); }
   text-align: center; padding: 20px; color: #fff; background: rgba(0,0,0,.6); font-size: 14px;
 }
 .scanner-actions { display: flex; flex-direction: column; gap: 10px; }
+
+/* Halaman scan memakai seluruh tinggi layar yang tersedia */
+[data-page="scanner"] .scanner-wrap {
+  height: calc(100vh - var(--header-h) - var(--nav-h) - 46px);
+  height: calc(100dvh - var(--header-h) - var(--nav-h) - 46px);
+}
+[data-page="scanner"] #scannerViewport {
+  flex: 1 1 auto;
+  min-height: 220px;
+  aspect-ratio: auto;
+  max-height: none;
+}
+/* Landscape / layar pendek: video kiri, tombol kanan */
+@media (orientation: landscape) and (max-height: 620px) {
+  [data-page="scanner"] .scanner-wrap { flex-direction: row; align-items: stretch; }
+  [data-page="scanner"] .scanner-head { flex-direction: column; justify-content: flex-start; gap: 8px; min-width: 110px; }
+  [data-page="scanner"] .scanner-spacer { display: none; }
+  [data-page="scanner"] #scannerViewport { flex: 1 1 auto; min-height: 0; }
+  [data-page="scanner"] .scanner-actions { width: 200px; justify-content: center; flex-shrink: 0; }
+}
 
 /* ---------- Dashboard ---------- */
 .dashboard-summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 8px; }

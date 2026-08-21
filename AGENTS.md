@@ -11,6 +11,10 @@ Google Apps Script backend (Google Sheets as database).
   body to avoid CORS preflight) for writes.
 - `js/scanner.js` — `SOScanner` wrapper around `@zxing/browser`. Generic
   `start(videoEl, onCode)`; stops after one detection. Reusable on any video.
+  Scan interval 120ms (bukan default 500ms), minta resolusi HD via
+  `decodeFromConstraints` dengan fallback plain constraints; hint TRY_HARDER
+  bila enum tersedia. Halaman scan memakai penuh tinggi layar (lihat CSS
+  `[data-page="scanner"]`), layout menyamping saat landscape.
 - `js/app.js` — main controller (IIFE). Wires UI, scan flow, settings.
 - `js/dashboard.js` — `SODashboard` render helpers.
 - `css/app.css` — all styles. `.hidden = display:none !important`.
@@ -21,7 +25,7 @@ Google Apps Script backend (Google Sheets as database).
 ## Conventions
 - UI labels in Indonesian.
 - Cache-bust: append `?v=YYYYMMDDx` to JS/CSS in `index.html` on changes
-  (last: `?v=20260821b`).
+  (last: `?v=20260821c`).
 - Backend response shape: `{ success: boolean, data?|message? }`.
 - `getSpreadsheet_()` lookup order: runtime Script Property `SPREADSHEET_ID`
   → `CONFIG.SPREADSHEET_ID` → bound/active spreadsheet.

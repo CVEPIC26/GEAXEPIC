@@ -13,11 +13,32 @@ const SOScanner = (function () {
   let lastCode = null;
   let lastAt = 0;
   const DEBOUNCE_MS = 1500;
+  const SCAN_INTERVAL_MS = 120; // default ZXing 500ms terasa lambat di HP
+  const HD = { width: { ideal: 1280 }, height: { ideal: 720 } };
   let onDetected = null;
   let videoElement = null;
 
   function isSupported() {
     return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && typeof window.ZXingBrowser !== 'undefined');
+  }
+
+  function videoConstraints(withHd) {
+    const video = { facingMode: { ideal: 'environment' } };
+    if (withHd) { video.width = HD.width; video.height = HD.height; }
+    return { video, audio: false };
+  }
+
+  // Hints TRY_HARDER jika enum tersedia di build yang dimuat; aman bila tidak.
+  function buildHints() {
+    try {
+      const ZB = window.ZXingBrowser || {};
+      const ZL = window.ZXing || {};
+      const H = ZB.DecodeHintType || ZL.DecodeHintType;
+      if (!H || H.TRY_HARDER === undefined) return undefined;
+      const hints = new Map();
+      hints.set(H.TRY_HARDER, true);
+      return hints;
+    } catch (e) { return undefined; }
   }
 
   async function start(videoEl, onCode, opts) {
@@ -29,16 +50,16 @@ const SOScanner = (function () {
     }
     stop();
     try {
-      const constraints = {
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      // Release immediately; ZXing will acquire its own stream with hints.
+      // Probe izin & ketersediaan kamera dulu agar pesan error akurat.
+      const stream = await navigator.mediaDevices.getUserMedia(videoConstraints(false));
       stream.getTracks().forEach((t) => t.stop());
 
-      const reader = new window.ZXingBrowser.BrowserMultiFormatReader();
-      controls = await reader.decodeFromVideoDevice(undefined, videoEl, (result, err, ctrl) => {
+      const reader = new window.ZXingBrowser.BrowserMultiFormatReader(
+        buildHints(),
+        SCAN_INTERVAL_MS
+      );
+
+      const onResult = (result) => {
         if (result) {
           const code = String(result.getText() || '').trim();
           if (!code) return;
@@ -51,11 +72,27 @@ const SOScanner = (function () {
           try { stop(); } catch (e) {}
           if (onDetected) onDetected(code);
         }
-      });
+      };
+
+      // Minta resolusi HD agar barcode 1D kecil terbaca; fallback ke plain
+      // constraints / API lama untuk perangkat yang menolak constraints.
+      try {
+        controls = await openReader(reader, videoEl, onResult, true);
+      } catch (hdErr) {
+        try { stop(); } catch (e) {}
+        controls = await openReader(reader, videoEl, onResult, false);
+      }
       active = true;
     } catch (err) {
       throw toScanError(err);
     }
+  }
+
+  function openReader(reader, videoEl, onResult, withHd) {
+    if (typeof reader.decodeFromConstraints === 'function') {
+      return reader.decodeFromConstraints(videoConstraints(withHd), videoEl, onResult);
+    }
+    return reader.decodeFromVideoDevice(undefined, videoEl, onResult);
   }
 
   function stop() {
