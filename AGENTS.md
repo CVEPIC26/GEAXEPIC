@@ -21,12 +21,16 @@ Google Apps Script backend (Google Sheets as database).
 ## Conventions
 - UI labels in Indonesian.
 - Cache-bust: append `?v=YYYYMMDDx` to JS/CSS in `index.html` on changes
-  (last: `?v=20260814a`).
+  (last: `?v=20260821a`).
 - Backend response shape: `{ success: boolean, data?|message? }`.
 - `getSpreadsheet_()` lookup order: runtime Script Property `SPREADSHEET_ID`
   → `CONFIG.SPREADSHEET_ID` → bound/active spreadsheet.
 
 ## Features (notable)
+- Startup flow: splash logo (~1.4s) → `setup` page (wajib scan/input URL API
+  setiap buka; localStorage URL dibuang saat init, nilai lama hanya jadi
+  prefill) → koneksi di-test dulu (`testConnection`) baru masuk app. Nav
+  di-guard flag `connected` di app.js.
 - Scan Apps Script Web App URL from QR/barcode (`scanApiUrlBtn` + reusable
   `openUrlScanner` modal in app.js).
 - Switch active Spreadsheet at runtime via `setSpreadsheetId` (accepts bare ID

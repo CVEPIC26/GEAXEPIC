@@ -10,6 +10,7 @@
   let currentProduct = null; // product detail being edited
   let isSaving = false;
   let isScanning = false;
+  let connected = false; // true only after a successful connection this session
 
   // ---- DOM helpers -------------------------------------------------------
   const $ = (id) => document.getElementById(id);
@@ -50,20 +51,30 @@
   }
 
   function updateConfigBanner() {
-    $('configBanner').classList.toggle('hidden', SO_API.isConfigured());
+    $('configBanner').classList.toggle('hidden', SO_API.isConfigured() || !connected);
   }
 
   // ---- Navigation --------------------------------------------------------
   document.querySelectorAll('[data-target]').forEach((el) => {
     el.addEventListener('click', (e) => {
       const t = el.getAttribute('data-target');
-      if (t) { e.preventDefault(); showPage(t); if (t === 'dashboard') loadDashboard(); }
+      if (t) {
+        e.preventDefault();
+        if (!connected) {
+          showPage('setup');
+          toast('Hubungkan ke server terlebih dahulu.', 'error');
+          return;
+        }
+        showPage(t);
+        if (t === 'dashboard') loadDashboard();
+      }
     });
   });
 
   // Bottom nav extra page loads
   document.querySelectorAll('.nav-item').forEach((n) => {
     n.addEventListener('click', () => {
+      if (!connected) return; // blocked by the data-target guard above
       const t = n.getAttribute('data-target');
       if (t === 'notchecked') loadNotChecked();
       if (t === 'difference') loadDifference();
@@ -353,6 +364,67 @@
     }
   }
 
+  // ---- Setup (wajib setiap buka aplikasi) ---------------------------------
+  const API_URL_RE = /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/;
+
+  function setSetupStatus(msg, isError) {
+    const el = $('setupStatus');
+    el.textContent = msg || '';
+    el.style.color = isError ? 'var(--red)' : 'var(--muted)';
+  }
+
+  function enterApp() {
+    connected = true;
+    updateConfigBanner();
+    showPage('scan');
+    loadSOStatus();
+    loadSpreadsheetInfo();
+    loadCategories();
+  }
+
+  async function connectFromSetup() {
+    const url = $('setupApiUrlInput').value.trim();
+    if (!url) { setSetupStatus('Masukkan URL Web App atau scan kodenya.', true); return; }
+    if (!API_URL_RE.test(url)) {
+      setSetupStatus('URL harus berformat: https://script.google.com/macros/s/.../exec', true);
+      return;
+    }
+    const btn = $('setupConnectBtn');
+    btn.disabled = true;
+    setSetupStatus('Menghubungkan ke server...', false);
+    SO_API.setApiUrl(url);
+    try {
+      await SO_API.testConnection();
+      toast('Terhubung ke server.', 'success');
+      setSetupStatus('', false);
+      enterApp();
+    } catch (err) {
+      // Buang URL yang gagal agar tidak dipakai lagi sesi ini.
+      SO_API.setApiUrl('');
+      setSetupStatus(err.message || 'Koneksi gagal. Periksa URL lalu coba lagi.', true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  $('setupConnectBtn').addEventListener('click', connectFromSetup);
+  $('setupApiUrlInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); connectFromSetup(); }
+  });
+
+  $('setupScanBtn').addEventListener('click', () => {
+    openUrlScanner('Pindai URL Web App', (code) => {
+      const url = String(code).trim();
+      $('setupApiUrlInput').value = url;
+      if (!API_URL_RE.test(url)) {
+        setSetupStatus('Kode bukan URL Web App yang valid. Periksa kembali.', true);
+        return false; // keep scanner open so the user can try again
+      }
+      connectFromSetup();
+      return true; // close scanner
+    });
+  });
+
   // ---- Settings / admin --------------------------------------------------
   $('openConfigBtn').addEventListener('click', () => showPage('more'));
   $('saveApiUrlBtn').addEventListener('click', () => {
@@ -395,6 +467,8 @@
     try {
       const data = await SO_API.testConnection();
       hideLoading();
+      connected = true;
+      updateConfigBanner();
       toast('✓ Koneksi berhasil. Server merespons.', 'success');
       loadSOStatus();
     } catch (err) {
@@ -592,8 +666,27 @@
   });
   window.addEventListener('beforeunload', () => { SOScanner.stop(); });
 
+  // Splash: tampilkan logo sebentar, lalu hilang.
+  function dismissSplash() {
+    const splash = $('splash');
+    if (!splash) return;
+    setTimeout(() => {
+      splash.classList.add('fade-out');
+      setTimeout(() => { if (splash.parentNode) splash.parentNode.removeChild(splash); }, 500);
+    }, 1400);
+  }
+  if (document.readyState === 'complete') dismissSplash();
+  else window.addEventListener('load', dismissSplash);
+
+  // Reset setiap kali aplikasi dibuka: URL API tersimpan dibuang agar user
+  // selalu scan/input ulang (menghindari bug URL lama yang tidak terhubung).
+  const prevApiUrl = SO_API.getApiUrl();
+  SO_API.setApiUrl('');
+  if (prevApiUrl) {
+    $('setupApiUrlInput').value = prevApiUrl;
+    setSetupStatus('URL sesi sebelumnya sudah terisi. Tekan "Hubungkan" atau scan ulang.', false);
+  }
+
   updateConfigBanner();
-  loadSOStatus();
-  loadSpreadsheetInfo();
-  showPage('scan');
+  showPage('setup');
 })();
